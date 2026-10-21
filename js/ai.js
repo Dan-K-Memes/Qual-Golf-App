@@ -241,7 +241,8 @@ export function applyParseResult(round, input) {
 
 // ---------- Course parsing ----------
 
-export function buildCourseRequest(base64, mediaType, model) {
+export function buildCourseRequest(images, model) {
+  const many = images.length > 1;
   return {
     model,
     max_tokens: 8000,
@@ -250,10 +251,10 @@ export function buildCourseRequest(base64, mediaType, model) {
     messages: [{
       role: 'user',
       content: [
-        { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
+        ...images.map((im) => ({ type: 'image', source: { type: 'base64', media_type: im.mediaType, data: im.base64 } })),
         {
           type: 'text',
-          text: 'Read this golf scorecard. Return every tee box with its slope, course rating and, for each of the 18 holes, par, stroke index (handicap rank) and yardage for that tee. Stroke index is usually in a row labelled HCP, Hdcp, SI or Stroke Index; if there are separate men\'s and ladies\' index rows, use the men\'s one. If a value is unreadable use null and add a warning. Do not guess numbers.',
+          text: `${many ? `These ${images.length} images are screenshots or slices of the same golf scorecard, in order, and may overlap. Combine them into one card. ` : ''}Read this golf scorecard. It may be a photo of a paper card or a screenshot from a website or app, and may show only some tees. Return every tee box with its slope, course rating and, for each of the 18 holes, par, stroke index (handicap rank) and yardage for that tee. Stroke index is usually in a row or column labelled HCP, Hdcp, SI or Stroke Index; if there are separate men's and ladies' index rows, use the men's one. If a value is unreadable or absent use null and add a warning. Do not guess numbers.`,
         },
       ],
     }],
@@ -315,8 +316,8 @@ export async function parseRound(round, settings, fetchImpl) {
   return applyParseResult(round, extractToolInput(data, 'record_round'));
 }
 
-export async function parseScorecard(base64, mediaType, settings, fetchImpl) {
-  const body = buildCourseRequest(base64, mediaType, settings.model);
+export async function parseScorecard(images, settings, fetchImpl) {
+  const body = buildCourseRequest(images, settings.model);
   const data = await callAnthropic(settings.apiKey, body, fetchImpl);
   return normalizeCourse(extractToolInput(data, 'record_course'));
 }

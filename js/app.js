@@ -174,7 +174,12 @@ function handleHash() {
 
 // ---------- scorecard photo ----------
 
-async function fileToJpegBase64(file, maxDim = 1800) {
+// Photos and screenshots become one or more JPEGs. The API shrinks very large images, so tall
+// screenshots are sliced (with overlap) to keep small print legible.
+const MAX_SIDE = 1568;
+const MAX_IMAGES = 8;
+
+async function fileToImages(file) {
   const url = URL.createObjectURL(file);
   try {
     const img = await new Promise((resolve, reject) => {
@@ -183,28 +188,55 @@ async function fileToJpegBase64(file, maxDim = 1800) {
       im.onerror = () => reject(new Error('Could not read that image'));
       im.src = url;
     });
-    const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
-    const canvas = document.createElement('canvas');
-    canvas.width = Math.round(img.width * scale);
-    canvas.height = Math.round(img.height * scale);
-    canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.88);
-    return dataUrl.split(',')[1];
+    const w = img.naturalWidth || img.width;
+    const h = img.naturalHeight || img.height;
+    const out = [];
+    const encode = (sx, sy, sw, sh) => {
+      const scale = Math.min(1, MAX_SIDE / Math.max(sw, sh));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(sw * scale));
+      canvas.height = Math.max(1, Math.round(sh * scale));
+      canvas.getContext('2d').drawImage(img, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+      return { base64: canvas.toDataURL('image/jpeg', 0.9).split(',')[1], mediaType: 'image/jpeg' };
+    };
+    if (h > w * 1.8) {
+      const slice = Math.max(Math.round(w * 1.5), 1400);
+      const step = Math.round(slice * 0.88);
+      for (let y = 0; y < h; y += step) {
+        const sh = Math.min(slice, h - y);
+        out.push(encode(0, y, w, sh));
+        if (y + sh >= h) break;
+      }
+    } else if (w > h * 1.8) {
+      const slice = Math.max(Math.round(h * 1.5), 1400);
+      const step = Math.round(slice * 0.88);
+      for (let x = 0; x < w; x += step) {
+        const sw = Math.min(slice, w - x);
+        out.push(encode(x, 0, sw, h));
+        if (x + sw >= w) break;
+      }
+    } else {
+      out.push(encode(0, 0, w, h));
+    }
+    return out;
   } finally {
     URL.revokeObjectURL(url);
   }
 }
 
-async function scorecardFromPhoto(file) {
+async function scorecardFromFiles(fileList) {
+  const files = Array.from(fileList || []);
+  if (!files.length) return;
   if (!state.settings.apiKey) return toast('Add your Claude API key in Settings first');
   busy('Reading the scorecard…');
   try {
-    const b64 = await fileToJpegBase64(file);
-    const course = await AI.parseScorecard(b64, 'image/jpeg', state.settings);
+    const images = (await Promise.all(files.map(fileToImages))).flat();
+    if (images.length > MAX_IMAGES) throw new Error(`That is ${images.length} image pieces. Try fewer or smaller screenshots (max ${MAX_IMAGES}).`);
+    const course = await AI.parseScorecard(images, state.settings);
     ui.editCourse = course;
     ui.courseNote = course.warnings.length
       ? `Check these: ${course.warnings.join('; ')}`
-      : 'Check the numbers against your card, then save.';
+      : 'Check the numbers against the card, then save.';
   } catch (e) {
     toast(e.message);
   } finally {
@@ -495,9 +527,11 @@ function viewCourses() {
   return `
     <div class="card">
       <h3>Add a course</h3>
-      <p class="muted small">Take a clear photo of the scorecard showing every tee, slope, rating, par, stroke index and yardages.</p>
-      <label>Scorecard photo</label>
-      <input type="file" accept="image/*" data-bind="scorecardPhoto">
+      <p class="muted small">Use a photo of the card, or screenshots from the club's website or a golf app. Include every tee with slope, rating, par, stroke index and yardages. For a long page, select all the screenshots at once.</p>
+      <label>Screenshots from your photo library (pick one or more)</label>
+      <input type="file" accept="image/*" multiple data-bind="scorecardFiles">
+      <label>Or take a photo of the card</label>
+      <input type="file" accept="image/*" capture="environment" data-bind="scorecardFiles">
       <button class="secondary" style="margin-top:10px;width:100%" data-act="manualCourse">Enter manually instead</button>
     </div>
     <h2>Your courses</h2>
@@ -881,7 +915,7 @@ const binds = {
     setPath(ui.editCourse, t.dataset.path, v);
     if (/\.(par|si|yards)$/.test(t.dataset.path)) render();
   },
-  scorecardPhoto: (t) => { if (t.files[0]) scorecardFromPhoto(t.files[0]); },
+  scorecardFiles: (t) => { scorecardFromFiles(t.files); t.value = ''; },
   importFile: async (t) => {
     if (!t.files[0]) return;
     document.getElementById('importText').value = await t.files[0].text();

@@ -99,13 +99,17 @@ test('scorecard photo parsing pads to 18 holes and keeps missing values null', a
     name: 'Hendon Golf Club',
     tees: [{ name: 'White', slope: 128, rating: 69.1, holes: [{ hole: 1, par: 4, si: 7, yards: 380 }, { hole: 2, par: 3, si: null, yards: 150 }] }],
   }));
-  const course = await parseScorecard('BASE64', 'image/jpeg', { apiKey: 'k', model: 'm' }, f);
+  const course = await parseScorecard([{ base64: 'BASE64', mediaType: 'image/jpeg' }, { base64: 'PART2', mediaType: 'image/jpeg' }], { apiKey: 'k', model: 'm' }, f);
   assert.equal(course.name, 'Hendon Golf Club');
   assert.equal(course.tees[0].holes.length, 18);
   assert.equal(course.tees[0].holes[1].si, null);
   assert.equal(course.tees[0].holes[0].yards, 380);
   assert.equal(f.last.body.messages[0].content[0].source.data, 'BASE64');
-  assert.equal(buildCourseRequest('x', 'image/png', 'm').tool_choice.name, 'record_course');
+  assert.equal(f.last.body.messages[0].content[1].source.data, 'PART2');
+  assert.match(f.last.body.messages[0].content[2].text, /2 images are screenshots or slices/);
+  const single = buildCourseRequest([{ base64: 'x', mediaType: 'image/png' }], 'm');
+  assert.equal(single.tool_choice.name, 'record_course');
+  assert.doesNotMatch(single.messages[0].content[1].text, /slices/);
   assert.equal(normalizeCourse({}).tees.length, 0);
 });
 

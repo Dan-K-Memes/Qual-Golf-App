@@ -9,7 +9,7 @@ on your phone. Claude (Anthropic API) does the language understanding.
 
 ## What it does
 
-- **Scorecard photo to course**: photograph the card once, Claude reads every tee (slope, rating, par, stroke index, yardage). You confirm and save.
+- **Scorecard to course**: photograph the card, or screenshot it from the club's website or a golf app before you head out (pick several screenshots at once for a long page; tall ones are sliced automatically). Claude reads every tee (slope, rating, par, stroke index, yardage). You confirm and save.
 - **Scoring**: gross and net stroke play from your index, the tee's slope/rating, and each hole's stroke index (WHS course handicap, with an allowance % setting).
 - **Voice notes**: shot notes before shots, a recap after each hole. Hole recap advances the hole.
 - **Parsing**: notes become shots with club, lie, distance, intent, result, miss direction, risk, tags and penalties.
