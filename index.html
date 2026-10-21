@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Qual Golf</title>
+  <meta name="description" content="Talk through your round. Get real stats.">
+  <meta name="theme-color" content="#0f3d2e">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Qual Golf">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="top">
+    <h1>Qual Golf</h1>
+    <span id="top-sub" class="top-sub"></span>
+  </header>
+  <main id="app" aria-live="polite"></main>
+  <nav class="tabs" id="tabs">
+    <button data-act="nav" data-view="round">Round</button>
+    <button data-act="nav" data-view="review">Review</button>
+    <button data-act="nav" data-view="stats">Stats</button>
+    <button data-act="nav" data-view="courses">Courses</button>
+    <button data-act="nav" data-view="settings">Settings</button>
+  </nav>
+  <div id="toast" class="toast" role="status"></div>
+  <div id="busy" class="busy" hidden><div class="spinner"></div><span id="busy-msg"></span></div>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
